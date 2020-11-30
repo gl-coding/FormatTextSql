@@ -14,6 +14,8 @@ class Tools:
     EXE_ORDER = ["where", "groupby", "sortby"]
 
     OUTPUT_DIR = "output/"
+    
+    TRANSFORM = __import__("text_transform")
 
     @staticmethod
     def type_convert(arg):
@@ -76,8 +78,15 @@ class Tools:
         if "!=" in con:
             col, con_arg = [item.strip() for item in con.split("!=")]
             idx = Tools.list_find(head_list, col)
-        for items in data_list:
-            if items[idx] != con_arg:
+            for items in data_list:
+                if items[idx] != con_arg:
+                    res.append(items)
+        if ":" in con:
+            col, func_name = [item.strip() for item in con.split(":")]
+            idx = Tools.list_find(head_list, col)
+            func = getattr(Tools.TRANSFORM, func_name)
+            for items in data_list:
+                items[idx] = func(items[idx])
                 res.append(items)
         return res
 
@@ -139,11 +148,12 @@ class Sql:
                 self.global_list.append(splits)
                 
     def where(self, condition):
-        cons = condition.split("and")
+        if len(condition) > 1:
+            print("error: where condition > 1")
+            exit()
+        cons = [item.strip() for item in condition[0].split("and")]
         for con in cons:
-            if "!=" in con:
-                con.split()
-                self.global_list = Tools.filter(self.global_list, self.head_list, con)
+            self.global_list = Tools.filter(self.global_list, self.head_list, con)
 
     def groupby(self, seg_list):
         groupby_dic = {}
@@ -243,7 +253,8 @@ class Sql:
         for k, v in exe_order:
             #print k
             if k == "where":
-                res = self.where(v[0])
+                print(k, v)
+                res = self.where(v)
             if k == "groupby":
                 val = self.head_idx(v)
                 res = self.groupby(val)
@@ -294,19 +305,22 @@ class Sql:
                             item, val_type = Tools.type_convert(item)
                             ws.write(line_count, count, item)
 
-            wb.save('res.xls')
+            excel_out = "res.xls"
+            if os.path.exists(excel_out):
+                os.remove(excel_out)
+            wb.save(excel_out)
                     
 if __name__ == "__main__":
     sql = Sql()
     #write one sql res to a file in out_dir
 
-    #sql_str = "from data.log select 0 groupby logtime, cate into res.cate view file value count"
-    #sql.run_sql(sql_str)
-    #sql_str = "from data.log select 0 groupby logtime, ctype into res.ctype view file value count"
-    #sql.run_sql(sql_str)
-    #sql_str = "from data.log select 0 where ctype != video groupby logtime, cate into res.cate.novideo view file value count"
-    #sql.run_sql(sql_str)
-    sql_str = "from data.log.head select 0 where ctype != video groupby logtime, ctype into res.ctype.novideo view file value count"
+    sql_str = "from data.log select 0 groupby cate, logtime into res.cate view file value count"
+    sql.run_sql(sql_str)
+    sql_str = "from data.log select 0 groupby ctype, logtime into res.ctype view file value count"
+    sql.run_sql(sql_str)
+    sql_str = "from data.log select 0 where ctype != video and logtime:trans_to_int groupby cate, logtime into res.cate.novideo view file value count"
+    sql.run_sql(sql_str)
+    sql_str = "from data.log select 0 where ctype != video groupby ctype, logtime into res.ctype.novideo view file value count"
     sql.run_sql(sql_str)
     
     #write files in output to excel 
