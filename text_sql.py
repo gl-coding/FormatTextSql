@@ -33,6 +33,26 @@ class Sql:
     def set_print_type(self, print_type="file"):
         self.print_type = print_type
 
+    def type_convert(self, arg):
+        val_type = "" 
+        res = arg
+        try:
+            res = int(arg)
+        except Exception:
+            pass
+        else:
+            val_type = "int"
+
+        try:
+            res = float(arg)
+        except Exception:
+            pass
+        else:
+            res = int(res)
+            val_type = "float"
+
+        return res, val_type
+
     def load_data(self):
         with open(self.filename) as f:
             for line in f:
@@ -155,15 +175,14 @@ class Sql:
                 ws = wb.add_sheet(f)
                 full_path = in_dir + f
                 with open(full_path) as fin:
-                    line_count = -1
+                    line_count = 0
                     for line in fin:
                         line_count += 1
                         res = line.split("\t")
-                        count = -1
                         for item in res:
-                            count += 1
-                            #if line_count > 0 and count > 1:
-                            #    item = float(item)
+                            if line_count > 0:
+                                continue
+                            item, val_type = self.type_convert(item)
                             ws.write(line_count, count, item)
 
             wb.save('res.xls')
@@ -174,7 +193,13 @@ if __name__ == "__main__":
     #sql_str = "select 0 groupby 1 sortby 1"
     #sql_str = "select 0 groupby 1, 2"
     sql_str = "select 0 groupby 3, 1"
+    #write one sql res to a file in out_dir
     sql_str = "select 0 groupby 3, 2"
     sql.run_sql(sql_str)
+    sql.set_print_type("file")
+    sql.format_data()
+    #write files in output to excel 
     sql.set_print_type("excel")
     sql.format_data()
+    
+
