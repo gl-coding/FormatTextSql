@@ -92,7 +92,7 @@ class Tools:
 
     @staticmethod
     def print(arg, print_flag=False):
-        print_flag = True
+        #print_flag = True
         if print_flag:
             print(arg)
         else:
@@ -137,6 +137,7 @@ class Sql:
         self.print_type = print_type
 
     def load_data(self):
+        self.global_list = []
         with open(self.in_file) as f:
             count = 0
             for line in f:
@@ -153,7 +154,9 @@ class Sql:
             exit()
         cons = [item.strip() for item in condition[0].split("and")]
         for con in cons:
+            print(con)
             self.global_list = Tools.filter(self.global_list, self.head_list, con)
+            #print(self.global_list)
 
     def groupby(self, seg_list):
         groupby_dic = {}
@@ -234,6 +237,7 @@ class Sql:
         arg_dic = self.parse_sql(sql_str)
         self.in_file = Tools.error_check(arg_dic.get("from", Tools.ERR_NO_INPUT))
         self.load_data()
+        #print(self.global_list)
         arg_dic.pop("from")
 
         self.out_file = Tools.error_check(arg_dic.get("into", Tools.ERR_NO_OUTPUT))
@@ -253,7 +257,6 @@ class Sql:
         for k, v in exe_order:
             #print k
             if k == "where":
-                print(k, v)
                 res = self.where(v)
             if k == "groupby":
                 val = self.head_idx(v)
@@ -279,6 +282,7 @@ class Sql:
             with open(out_file, "a") as f:
                 for items in self.final_res:
                     line = "\t".join(items) + "\n"
+                    #print(line)
                     f.write(line)
         else:
             in_dir   = Tools.OUTPUT_DIR
@@ -293,11 +297,11 @@ class Sql:
                 ws = wb.add_sheet(f)
                 full_path = in_dir + f
                 with open(full_path) as fin:
-                    line_count = -2
+                    line_count = -1
                     for line in fin:
                         line_count += 1
-                        if line_count == -1:
-                            continue
+                        #if line_count == -1:
+                        #    continue
                         res = line.split("\t")
                         count = -1
                         for item in res:
@@ -314,14 +318,14 @@ if __name__ == "__main__":
     sql = Sql()
     #write one sql res to a file in out_dir
 
-    sql_str = "from data.log select 0 groupby cate, logtime into res.cate view file value count"
-    sql.run_sql(sql_str)
-    sql_str = "from data.log select 0 groupby ctype, logtime into res.ctype view file value count"
-    sql.run_sql(sql_str)
-    sql_str = "from data.log select 0 where ctype != video and logtime:trans_to_int groupby cate, logtime into res.cate.novideo view file value count"
-    sql.run_sql(sql_str)
-    sql_str = "from data.log select 0 where ctype != video groupby ctype, logtime into res.ctype.novideo view file value count"
-    sql.run_sql(sql_str)
+    sql.run_sql("from data.log select 0 groupby cate, logtime into res.cate view file value count")
+    sql.run_sql("from data.log select 0 groupby ctype, logtime into res.ctype view file value count")
+
+    sql.run_sql("from data.log select 0 where ctype != video groupby cate, logtime into res.cate.nov view file value count")
+    sql.run_sql("from data.log select 0 where ctype != video groupby ctype, logtime into res.ctype.nov view file value count")
+
+    sql.run_sql("from data.log select 0 where ctype != video and logtime:float_to_int groupby cate, logtime into res.cate.nov.int view file value count")
+    sql.run_sql("from data.log select 0 where ctype != video and logtime:float_to_int groupby ctype, logtime into res.ctype.nov.int view file value count")
     
     #write files in output to excel 
     sql.set_print_type("excel")

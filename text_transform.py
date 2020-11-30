@@ -1,5 +1,5 @@
 
-def trans_to_int(input_str):
+def float_to_int(input_str):
     """
     output must be str
     """
