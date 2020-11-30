@@ -2,39 +2,22 @@
 import os
 import sys
 import xlwt
+import json
 
-class Sql:
+class Tools:
+    ERR_NO_INPUT  = -1
+    ERR_NO_OUTPUT = -2
+    ERR_NO_VIEW   = -3
+    ERR_NO_VALUE  = -4
 
-    def __init__(self, filename):
-        self.head_list = []
-        self.head_flag = False
-        self.global_list = []
-        self.filename = filename
-        self.final_res = []
-        self.print_type = "print"
-        self.load_data()
+    KEYWORDS  = ["from", "into", "view", "select", "where", "groupby", "sortby", "value"]
+    EXE_ORDER = ["where", "groupby", "sortby"]
 
-    def format_check(self):
-        pass
+    OUTPUT_DIR = "output/"
 
-    def set_head(self, head_str=""):
-        if not head_str:
-            self.head_list = [i for i in range(10)]
-        else:
-            self.head_list = head_str.split("\t")
-            self.head_falg = True
-
-    def set_val_idx(self, val_idx):
-        self.val_idx = val_idx
-
-    def get_val_idx(self):
-        return self.val_idx
-    
-    def set_print_type(self, print_type="file"):
-        self.print_type = print_type
-
-    def type_convert(self, arg):
-        val_type = "" 
+    @staticmethod
+    def type_convert(arg):
+        val_type = ""
         res = arg
         try:
             res = int(arg)
@@ -52,16 +35,96 @@ class Sql:
             val_type = "float"
 
         return res, val_type
+    
+    @staticmethod
+    def error_check(errno):
+        error_map = {
+                Tools.ERR_NO_INPUT :  "no input file",
+                Tools.ERR_NO_OUTPUT : "no output file",
+                Tools.ERR_NO_VIEW :   "no view style",
+                Tools.ERR_NO_VALUE:   "no value idx"
+                }
+        if isinstance(errno, int) and errno < 0:
+            err_msg = error_map.get(errno, "")
+            print("error:", err_msg)
+            exit(1)
+        elif isinstance(errno, list) and len(errno) == 1:
+            return errno[0]
+        else:
+            print("error: unknown")
+
+    @staticmethod
+    def order_pick(arg_dic):
+        res = []
+        for item in Tools.EXE_ORDER:
+            if item in arg_dic:
+                res.append((item, arg_dic[item]))
+        return res
+    
+    @staticmethod
+    def list_find(data_list, arg):
+        res = -1
+        try:
+            res = data_list.index(arg)
+        except:
+            res = -1
+        return res
+
+class Sql:
+
+    def __init__(self):
+        self.global_dict = []
+        self.global_list = []
+
+        self.head_list  = []
+        self.in_file    = ""
+        self.out_file   = ""
+        self.view_style = ""
+        self.final_res  = []
+        self.val_idx    = 0
+        self.print_type = "print"
+
+    def head_idx(self, col):
+        if isinstance(col, str):
+            res = Tools.list_find(self.head_list, col)
+        elif isinstance(col, list):
+            res = []
+            for c in col:
+                res_tmp = Tools.list_find(self.head_list, c)
+                if res_tmp == -1:
+                    res = res_tmp
+                    col = c
+                    break
+                res.append(res_tmp)
+        if res == -1:
+            print("error: find col(%s) fail, exit" % col)
+            exit(1)
+        return res
+
+    def set_head(self, head_str=""):
+        self.head_list = head_str.strip().split("\t")
+        print("headlist:", self.head_list)
+
+    def set_print_type(self, print_type="file"):
+        self.print_type = print_type
 
     def load_data(self):
-        with open(self.filename) as f:
+        with open(self.in_file) as f:
+            count = 0
             for line in f:
+                count += 1
+                if count == 1:
+                    self.set_head(line)
+                    continue
                 splits = line.strip().split("\t")
                 self.global_list.append(splits)
+                
+    def where(self):
+        pass
 
     def groupby(self, seg_list):
         groupby_dic = {}
-        val_idx  = self.get_val_idx()
+        val_idx  = self.val_idx
         for items in self.global_list:
             key = []
             val = items[val_idx]
@@ -106,47 +169,71 @@ class Sql:
         #print sql
         sql = sql + " "
         res = []
-        keywords = ["select", "groupby", "sortby"]
+        keywords = Tools.KEYWORDS
+        key_left = []
         for key in keywords:
             idx = sql.find(key)
-            if idx == -1:
-                keywords.remove(key)
-                continue
-            res.append(idx)
-        res.append(-1)
-        #print res
+            if idx != -1:
+                key_left.append(key)
+                res.append(idx)
+        #res.append(-1)
+        print(res)
+        key_left = list(zip(key_left, res))
+        key_left.sort(key=lambda x:x[1])
+        keys = [k for k, v in key_left] + [-1]
+        res  = [v for k, v in key_left] + [-1]
+        print(keys)
+        print(res)
         interval = [[res[i], res[i+1]] for i in range(len(res)-1)]
-        #print keywords
-        #print interval
-        res_dic = zip(keywords, interval)
-        #print res_dic
-        arg_dic = []
-        for k, v in res_dic:
+        print(interval)
+        res_dic = dict(zip(keys, interval))
+        print(res_dic)
+        arg_dic = {}
+        for k, v in res_dic.items():
             key = k
             val = sql[v[0]:v[1]]
+            print(key)
+            print(val)
             val = val.replace(key, "").strip()
-            #print val
-            val = [int(i.strip()) for i in val.split(",") if i != ""]
-            arg_dic.append((key, val))
-        #print arg_dic
+            print(val)
+            val = [str(i.strip()) for i in val.split(",") if i != ""]
+            arg_dic[key] = val
+        #print(arg_dic)
         return arg_dic
 
     def run_sql(self, sql_str):
         res = []
+        
         arg_dic = self.parse_sql(sql_str)
-        for k, v in arg_dic:
+        self.in_file = Tools.error_check(arg_dic.get("from", Tools.ERR_NO_INPUT))
+        self.load_data()
+        arg_dic.pop("from")
+
+        self.out_file = Tools.error_check(arg_dic.get("into", Tools.ERR_NO_OUTPUT))
+        arg_dic.pop("into")
+
+        self.view_style = Tools.error_check(arg_dic.get("view", Tools.ERR_NO_VIEW))
+        self.set_print_type(self.view_style)
+        arg_dic.pop("view")
+
+        self.val_idx = Tools.error_check(arg_dic.get("value", Tools.ERR_NO_VALUE))
+        self.val_idx = self.head_idx(self.val_idx)
+        arg_dic.pop("value")
+        print(arg_dic)
+
+        exe_order = Tools.order_pick(arg_dic)
+        print(exe_order)
+        for k, v in exe_order:
             #print k
-            if k == "select":
-                if len(v) > 1:
-                    return -1
-                self.set_val_idx(v[0])
             if k == "groupby":
-                res = self.groupby(v)
+                val = self.head_idx(v)
+                res = self.groupby(val)
             if k == "sortby":
                 res = self.sortby(v)
+        print(res)
+
         self.final_res = res
         self.simple_sort()
-        self.set_print_type()
         self.format_data()
     
     def format_data(self):
@@ -154,16 +241,18 @@ class Sql:
             for items in self.final_res:
                 print("\t".join(items))
         elif self.print_type == "file":
-            out_dir  = "output/"
-            out_file = out_dir + "format.res"
+            out_dir  = Tools.OUTPUT_DIR
+            out_file = out_dir + self.out_file
             if not os.path.exists(out_dir):
                 os.mkdir(out_dir)
+            if os.path.exists(out_file):
+                os.remove(out_file)
             with open(out_file, "a") as f:
                 for items in self.final_res:
                     line = "\t".join(items) + "\n"
                     f.write(line)
         else:
-            in_dir   = "output/"
+            in_dir   = Tools.OUTPUT_DIR
             wb = xlwt.Workbook()
             file_list = []
             for root, dirs, files in os.walk(in_dir):
@@ -182,22 +271,22 @@ class Sql:
                         for item in res:
                             if line_count > 0:
                                 continue
-                            item, val_type = self.type_convert(item)
+                            item, val_type = Tools.type_convert(item)
                             ws.write(line_count, count, item)
 
             wb.save('res.xls')
                     
 if __name__ == "__main__":
-    filename = sys.argv[1]
-    sql = Sql(filename)
+    sql = Sql()
     #sql_str = "select 0 groupby 1 sortby 1"
     #sql_str = "select 0 groupby 1, 2"
-    sql_str = "select 0 groupby 3, 1"
+    #sql_str = "select 0 groupby 3, 1"
     #write one sql res to a file in out_dir
-    sql_str = "select 0 groupby 3, 2"
+    #sql_str = "from data.log.head select 0 groupby logtime, cate into res.log view print value count"
+    sql_str = "from data.log.head select 0 groupby logtime, cate into res.log view file value count"
     sql.run_sql(sql_str)
-    sql.set_print_type("file")
-    sql.format_data()
+    #sql.set_print_type("file")
+    #sql.format_data()
     #write files in output to excel 
     sql.set_print_type("excel")
     sql.format_data()
