@@ -31,7 +31,7 @@ class Tools:
         except Exception:
             pass
         else:
-            res = int(res)
+            #res = int(res)
             val_type = "float"
 
         return res, val_type
@@ -69,6 +69,25 @@ class Tools:
         except:
             res = -1
         return res
+
+    @staticmethod
+    def filter(data_list, head_list, con):
+        res = []
+        if "!=" in con:
+            col, con_arg = [item.strip() for item in con.split("!=")]
+            idx = Tools.list_find(head_list, col)
+        for items in data_list:
+            if items[idx] != con_arg:
+                res.append(items)
+        return res
+
+    @staticmethod
+    def print(arg, print_flag=False):
+        print_flag = True
+        if print_flag:
+            print(arg)
+        else:
+            pass
 
 class Sql:
 
@@ -119,8 +138,12 @@ class Sql:
                 splits = line.strip().split("\t")
                 self.global_list.append(splits)
                 
-    def where(self):
-        pass
+    def where(self, condition):
+        cons = condition.split("and")
+        for con in cons:
+            if "!=" in con:
+                con.split()
+                self.global_list = Tools.filter(self.global_list, self.head_list, con)
 
     def groupby(self, seg_list):
         groupby_dic = {}
@@ -177,25 +200,19 @@ class Sql:
                 key_left.append(key)
                 res.append(idx)
         #res.append(-1)
-        print(res)
+        Tools.print(res)
         key_left = list(zip(key_left, res))
         key_left.sort(key=lambda x:x[1])
         keys = [k for k, v in key_left] + [-1]
         res  = [v for k, v in key_left] + [-1]
-        print(keys)
-        print(res)
         interval = [[res[i], res[i+1]] for i in range(len(res)-1)]
-        print(interval)
         res_dic = dict(zip(keys, interval))
-        print(res_dic)
+        Tools.print(res_dic)
         arg_dic = {}
         for k, v in res_dic.items():
             key = k
             val = sql[v[0]:v[1]]
-            print(key)
-            print(val)
             val = val.replace(key, "").strip()
-            print(val)
             val = [str(i.strip()) for i in val.split(",") if i != ""]
             arg_dic[key] = val
         #print(arg_dic)
@@ -219,18 +236,19 @@ class Sql:
         self.val_idx = Tools.error_check(arg_dic.get("value", Tools.ERR_NO_VALUE))
         self.val_idx = self.head_idx(self.val_idx)
         arg_dic.pop("value")
-        print(arg_dic)
+        Tools.print(arg_dic)
 
         exe_order = Tools.order_pick(arg_dic)
-        print(exe_order)
+        Tools.print(exe_order)
         for k, v in exe_order:
             #print k
+            if k == "where":
+                res = self.where(v[0])
             if k == "groupby":
                 val = self.head_idx(v)
                 res = self.groupby(val)
             if k == "sortby":
                 res = self.sortby(v)
-        print(res)
 
         self.final_res = res
         self.simple_sort()
@@ -264,13 +282,15 @@ class Sql:
                 ws = wb.add_sheet(f)
                 full_path = in_dir + f
                 with open(full_path) as fin:
-                    line_count = 0
+                    line_count = -2
                     for line in fin:
                         line_count += 1
+                        if line_count == -1:
+                            continue
                         res = line.split("\t")
+                        count = -1
                         for item in res:
-                            if line_count > 0:
-                                continue
+                            count += 1
                             item, val_type = Tools.type_convert(item)
                             ws.write(line_count, count, item)
 
@@ -278,15 +298,17 @@ class Sql:
                     
 if __name__ == "__main__":
     sql = Sql()
-    #sql_str = "select 0 groupby 1 sortby 1"
-    #sql_str = "select 0 groupby 1, 2"
-    #sql_str = "select 0 groupby 3, 1"
     #write one sql res to a file in out_dir
-    #sql_str = "from data.log.head select 0 groupby logtime, cate into res.log view print value count"
-    sql_str = "from data.log.head select 0 groupby logtime, cate into res.log view file value count"
+
+    #sql_str = "from data.log select 0 groupby logtime, cate into res.cate view file value count"
+    #sql.run_sql(sql_str)
+    #sql_str = "from data.log select 0 groupby logtime, ctype into res.ctype view file value count"
+    #sql.run_sql(sql_str)
+    #sql_str = "from data.log select 0 where ctype != video groupby logtime, cate into res.cate.novideo view file value count"
+    #sql.run_sql(sql_str)
+    sql_str = "from data.log.head select 0 where ctype != video groupby logtime, ctype into res.ctype.novideo view file value count"
     sql.run_sql(sql_str)
-    #sql.set_print_type("file")
-    #sql.format_data()
+    
     #write files in output to excel 
     sql.set_print_type("excel")
     sql.format_data()
