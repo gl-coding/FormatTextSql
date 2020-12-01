@@ -3,6 +3,7 @@ import os
 import sys
 import xlwt
 import json
+import shutil
 
 class Tools:
     ERR_NO_INPUT  = -1
@@ -121,6 +122,7 @@ class Sql:
         self.final_res  = []
         self.val_idx    = 0
         self.print_type = "print"
+        self.clean_dir()
 
     def head_idx(self, col):
         if isinstance(col, str):
@@ -145,6 +147,11 @@ class Sql:
 
     def set_print_type(self, print_type="file"):
         self.print_type = print_type
+    
+    def clean_dir(self):
+        if os.path.exists(Tools.OUTPUT_DIR):
+            shutil.rmtree(Tools.OUTPUT_DIR)
+        os.mkdir(Tools.OUTPUT_DIR)
 
     def load_data(self):
         self.global_list = []
@@ -287,8 +294,6 @@ class Sql:
             out_file = out_dir + self.out_file
             if os.path.exists(out_file):
                 os.remove(out_file)
-            if not os.path.exists(out_dir):
-                os.mkdir(out_dir)
             with open(out_file, "a") as f:
                 for items in self.final_res:
                     line = "\t".join(items) + "\n"
@@ -328,15 +333,17 @@ if __name__ == "__main__":
     sql = Sql()
     #write one sql res to a file in out_dir
 
-    #sql.run_sql("from data.log select 0 where logtime=>merge_val groupby cate, logtime into res.cate view file value count")
-    sql.run_sql("from data.log select 0 where logtime=:filt_some groupby cate, logtime into res.cate view file value count")
-    sql.run_sql("from data.log select 0 where logtime=:filt_some groupby ctype, logtime into res.ctype view file value count")
+    sql.run_sql("from data.log select 0 groupby logtime into res.logtime view file value count")
+    sql.run_sql("from data.log select 0 where ctype != video groupby logtime into res.logtime.nov view file value count")
 
-    sql.run_sql("from data.log select 0 where ctype != video and logtime=:filt_some groupby cate, logtime into res.cate.nov view file value count")
-    sql.run_sql("from data.log select 0 where ctype != video and logtime=:filt_some groupby ctype, logtime into res.ctype.nov view file value count")
+    #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby cate, logtime into res.cate view file value count")
+    #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby ctype, logtime into res.ctype view file value count")
 
-    #sql.run_sql("from data.log select 0 where ctype != video and logtime groupby cate, logtime into res.cate.nov.int view file value count")
-    #sql.run_sql("from data.log select 0 where ctype != video and logtime groupby ctype, logtime into res.ctype.nov.int view file value count")
+    #sql.run_sql("from data.log select 0 where ctype != video and logtime=:filt_some groupby cate, logtime into res.cate.nov view file value count")
+    #sql.run_sql("from data.log select 0 where ctype != video and logtime=:filt_some groupby ctype, logtime into res.ctype.nov view file value count")
+
+    #sql.run_sql("from data.log select 0 where ctype != video and logtime=>merge_val groupby cate, logtime into res.cate.nov.int view file value count")
+    #sql.run_sql("from data.log select 0 where ctype != video and logtime=>merge_val groupby ctype, logtime into res.ctype.nov.int view file value count")
     
     #write files in output to excel 
     sql.set_print_type("excel")
