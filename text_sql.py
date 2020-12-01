@@ -15,7 +15,7 @@ class Tools:
 
     OUTPUT_DIR = "output/"
     
-    TRANSFORM = __import__("text_transform")
+    TRANSFORM = __import__("tools_transform")
 
     @staticmethod
     def type_convert(arg):
@@ -81,13 +81,23 @@ class Tools:
             for items in data_list:
                 if items[idx] != con_arg:
                     res.append(items)
-        if ":" in con:
+        if "=>" in con:
+            #transform
             col, func_name = [item.strip() for item in con.split(":")]
             idx = Tools.list_find(head_list, col)
             func = getattr(Tools.TRANSFORM, func_name)
             for items in data_list:
                 items[idx] = func(items[idx])
                 res.append(items)
+        if "=:" in con:
+            #filter
+            col, func_name = [item.strip() for item in con.split(":")]
+            idx = Tools.list_find(head_list, col)
+            func = getattr(Tools.TRANSFORM, func_name)
+            for items in data_list:
+                filt_res = func(items[idx])
+                if filt_res:
+                    res.append(items)
         return res
 
     @staticmethod
@@ -275,10 +285,10 @@ class Sql:
         elif self.print_type == "file":
             out_dir  = Tools.OUTPUT_DIR
             out_file = out_dir + self.out_file
-            if not os.path.exists(out_dir):
-                os.mkdir(out_dir)
             if os.path.exists(out_file):
                 os.remove(out_file)
+            if not os.path.exists(out_dir):
+                os.mkdir(out_dir)
             with open(out_file, "a") as f:
                 for items in self.final_res:
                     line = "\t".join(items) + "\n"
@@ -318,14 +328,15 @@ if __name__ == "__main__":
     sql = Sql()
     #write one sql res to a file in out_dir
 
-    sql.run_sql("from data.log select 0 groupby cate, logtime into res.cate view file value count")
-    sql.run_sql("from data.log select 0 groupby ctype, logtime into res.ctype view file value count")
+    #sql.run_sql("from data.log select 0 where logtime=>merge_val groupby cate, logtime into res.cate view file value count")
+    sql.run_sql("from data.log select 0 where logtime=:filt_some groupby cate, logtime into res.cate view file value count")
+    sql.run_sql("from data.log select 0 where logtime=:filt_some groupby ctype, logtime into res.ctype view file value count")
 
-    sql.run_sql("from data.log select 0 where ctype != video groupby cate, logtime into res.cate.nov view file value count")
-    sql.run_sql("from data.log select 0 where ctype != video groupby ctype, logtime into res.ctype.nov view file value count")
+    sql.run_sql("from data.log select 0 where ctype != video and logtime=:filt_some groupby cate, logtime into res.cate.nov view file value count")
+    sql.run_sql("from data.log select 0 where ctype != video and logtime=:filt_some groupby ctype, logtime into res.ctype.nov view file value count")
 
-    sql.run_sql("from data.log select 0 where ctype != video and logtime:float_to_int groupby cate, logtime into res.cate.nov.int view file value count")
-    sql.run_sql("from data.log select 0 where ctype != video and logtime:float_to_int groupby ctype, logtime into res.ctype.nov.int view file value count")
+    #sql.run_sql("from data.log select 0 where ctype != video and logtime groupby cate, logtime into res.cate.nov.int view file value count")
+    #sql.run_sql("from data.log select 0 where ctype != video and logtime groupby ctype, logtime into res.ctype.nov.int view file value count")
     
     #write files in output to excel 
     sql.set_print_type("excel")
