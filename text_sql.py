@@ -14,7 +14,8 @@ class Tools:
     KEYWORDS  = ["from", "into", "view", "select", "where", "groupby", "sortby", "value"]
     EXE_ORDER = ["where", "groupby", "sortby"]
 
-    OUTPUT_DIR = "output/"
+    OUTPUT_DIR   = "output/"
+    OUTPUT_EXCEL = "output.xls"
     
     TRANSFORM = __import__("tools_transform")
 
@@ -149,9 +150,14 @@ class Sql:
         self.print_type = print_type
     
     def clean_dir(self):
+        #clean input dir
         if os.path.exists(Tools.OUTPUT_DIR):
             shutil.rmtree(Tools.OUTPUT_DIR)
         os.mkdir(Tools.OUTPUT_DIR)
+
+        #clean output excel
+        if os.path.exists(Tools.OUTPUT_EXCEL):
+            os.remove(Tools.OUTPUT_EXCEL)
 
     def load_data(self):
         self.global_list = []
@@ -324,10 +330,7 @@ class Sql:
                             item, val_type = Tools.type_convert(item)
                             ws.write(line_count, count, item)
 
-            excel_out = "res.xls"
-            if os.path.exists(excel_out):
-                os.remove(excel_out)
-            wb.save(excel_out)
+            wb.save(Tools.OUTPUT_EXCEL)
                     
 if __name__ == "__main__":
     sql = Sql()
@@ -335,6 +338,7 @@ if __name__ == "__main__":
 
     sql.run_sql("from data.log select 0 groupby logtime into res.logtime view file value count")
     sql.run_sql("from data.log select 0 where ctype != video groupby logtime into res.logtime.nov view file value count")
+    sql.run_sql("from data.log select 0 where ctype == video groupby logtime into res.logtime.v view file value count")
 
     #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby cate, logtime into res.cate view file value count")
     #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby ctype, logtime into res.ctype view file value count")
