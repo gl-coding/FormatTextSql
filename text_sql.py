@@ -5,110 +5,7 @@ import xlwt
 import json
 import shutil
 
-class Tools:
-    ERR_NO_INPUT  = -1
-    ERR_NO_OUTPUT = -2
-    ERR_NO_VIEW   = -3
-    ERR_NO_VALUE  = -4
-
-    KEYWORDS  = ["from", "into", "view", "select", "where", "groupby", "sortby", "value"]
-    EXE_ORDER = ["where", "groupby", "sortby"]
-
-    OUTPUT_DIR   = "output/"
-    OUTPUT_EXCEL = "output.xls"
-    
-    TRANSFORM = __import__("tools_transform")
-
-    @staticmethod
-    def type_convert(arg):
-        val_type = ""
-        res = arg
-        try:
-            res = int(arg)
-        except Exception:
-            pass
-        else:
-            val_type = "int"
-
-        try:
-            res = float(arg)
-        except Exception:
-            pass
-        else:
-            #res = int(res)
-            val_type = "float"
-
-        return res, val_type
-    
-    @staticmethod
-    def error_check(errno):
-        error_map = {
-                Tools.ERR_NO_INPUT :  "no input file",
-                Tools.ERR_NO_OUTPUT : "no output file",
-                Tools.ERR_NO_VIEW :   "no view style",
-                Tools.ERR_NO_VALUE:   "no value idx"
-                }
-        if isinstance(errno, int) and errno < 0:
-            err_msg = error_map.get(errno, "")
-            print("error:", err_msg)
-            exit(1)
-        elif isinstance(errno, list) and len(errno) == 1:
-            return errno[0]
-        else:
-            print("error: unknown")
-
-    @staticmethod
-    def order_pick(arg_dic):
-        res = []
-        for item in Tools.EXE_ORDER:
-            if item in arg_dic:
-                res.append((item, arg_dic[item]))
-        return res
-    
-    @staticmethod
-    def list_find(data_list, arg):
-        res = -1
-        try:
-            res = data_list.index(arg)
-        except:
-            res = -1
-        return res
-
-    @staticmethod
-    def filter(data_list, head_list, con):
-        res = []
-        if "!=" in con:
-            col, con_arg = [item.strip() for item in con.split("!=")]
-            idx = Tools.list_find(head_list, col)
-            for items in data_list:
-                if items[idx] != con_arg:
-                    res.append(items)
-        if "=>" in con:
-            #transform
-            col, func_name = [item.strip() for item in con.split(":")]
-            idx = Tools.list_find(head_list, col)
-            func = getattr(Tools.TRANSFORM, func_name)
-            for items in data_list:
-                items[idx] = func(items[idx])
-                res.append(items)
-        if "=:" in con:
-            #filter
-            col, func_name = [item.strip() for item in con.split(":")]
-            idx = Tools.list_find(head_list, col)
-            func = getattr(Tools.TRANSFORM, func_name)
-            for items in data_list:
-                filt_res = func(items[idx])
-                if filt_res:
-                    res.append(items)
-        return res
-
-    @staticmethod
-    def print(arg, print_flag=False):
-        #print_flag = True
-        if print_flag:
-            print(arg)
-        else:
-            pass
+from tools import Tools
 
 class Sql:
 
@@ -122,6 +19,7 @@ class Sql:
         self.view_style = ""
         self.final_res  = []
         self.val_idx    = 0
+        self.group_func = ""
         self.print_type = "print"
         self.clean_dir()
 
@@ -171,13 +69,20 @@ class Sql:
                 splits = line.strip().split("\t")
                 self.global_list.append(splits)
                 
+    def select(self, func):
+        funcname, args = func.split("(")
+        args = args.strip(")")
+        args = args.split(",")
+        self.val_idx = args[0]
+        self.val_idx = self.head_idx(self.val_idx)
+        self.group_func = [funcname] + args[1:]
+                
     def where(self, condition):
         if len(condition) > 1:
             print("error: where condition > 1")
             exit()
         cons = [item.strip() for item in condition[0].split("and")]
         for con in cons:
-            print(con)
             self.global_list = Tools.filter(self.global_list, self.head_list, con)
             #print(self.global_list)
 
@@ -192,11 +97,12 @@ class Sql:
             key = "\t".join(key)
             #print key
             if key not in groupby_dic:
-                groupby_dic[key] = float(val)
+                groupby_dic[key] = [float(val)]
             else:
-                groupby_dic[key] += float(val)
+                groupby_dic[key].append(float(val))
         #print groupby_dic
-        res = [(k+"\t"+str(v)).split("\t") for k, v in groupby_dic.items()]
+        #res = [(k+"\t"+str(v)).split("\t") for k, v in groupby_dic.items()]
+        res = Tools.group_compute(groupby_dic, self.group_func)
         #print res
         return res
 
@@ -223,41 +129,11 @@ class Sql:
     def simple_sort(self):
         self.final_res.sort()
 
-    #eg. select 1 groupby 2 3 sortby 2
-    def parse_sql(self, sql):
-        #print sql
-        sql = sql + " "
-        res = []
-        keywords = Tools.KEYWORDS
-        key_left = []
-        for key in keywords:
-            idx = sql.find(key)
-            if idx != -1:
-                key_left.append(key)
-                res.append(idx)
-        #res.append(-1)
-        Tools.print(res)
-        key_left = list(zip(key_left, res))
-        key_left.sort(key=lambda x:x[1])
-        keys = [k for k, v in key_left] + [-1]
-        res  = [v for k, v in key_left] + [-1]
-        interval = [[res[i], res[i+1]] for i in range(len(res)-1)]
-        res_dic = dict(zip(keys, interval))
-        Tools.print(res_dic)
-        arg_dic = {}
-        for k, v in res_dic.items():
-            key = k
-            val = sql[v[0]:v[1]]
-            val = val.replace(key, "").strip()
-            val = [str(i.strip()) for i in val.split(",") if i != ""]
-            arg_dic[key] = val
-        #print(arg_dic)
-        return arg_dic
-
     def run_sql(self, sql_str):
         res = []
         
-        arg_dic = self.parse_sql(sql_str)
+        arg_dic = Tools.parse_sql(sql_str)
+        print(arg_dic)
         self.in_file = Tools.error_check(arg_dic.get("from", Tools.ERR_NO_INPUT))
         self.load_data()
         #print(self.global_list)
@@ -270,9 +146,10 @@ class Sql:
         self.set_print_type(self.view_style)
         arg_dic.pop("view")
 
-        self.val_idx = Tools.error_check(arg_dic.get("value", Tools.ERR_NO_VALUE))
-        self.val_idx = self.head_idx(self.val_idx)
-        arg_dic.pop("value")
+        self.select(Tools.error_check(arg_dic.get("select", Tools.ERR_NO_FUNC)))
+
+        #self.val_idx = Tools.error_check(arg_dic.get("value", Tools.ERR_NO_VALUE))
+        #arg_dic.pop("value")
         Tools.print(arg_dic)
 
         exe_order = Tools.order_pick(arg_dic)
@@ -294,7 +171,7 @@ class Sql:
     def format_data(self):
         if self.print_type == "print":
             for items in self.final_res:
-                print("\t".join(items))
+                print("\t".join(map(str, items)))
         elif self.print_type == "file":
             out_dir  = Tools.OUTPUT_DIR
             out_file = out_dir + self.out_file
@@ -312,6 +189,9 @@ class Sql:
             for root, dirs, files in os.walk(in_dir):
                 for f in files:
                     file_list.append(f)
+            if len(file_list) == 0:
+                print("no output files, exit")
+                return
             file_list = sorted(file_list)
 
             for f in file_list:
@@ -336,9 +216,12 @@ if __name__ == "__main__":
     sql = Sql()
     #write one sql res to a file in out_dir
 
-    sql.run_sql("from data.log select 0 groupby logtime into res.logtime view file value count")
-    sql.run_sql("from data.log select 0 where ctype != video groupby logtime into res.logtime.nov view file value count")
-    sql.run_sql("from data.log select 0 where ctype == video groupby logtime into res.logtime.v view file value count")
+    #sql.run_sql("from data.log.head select count(count) groupby logtime into res.logtime view print")
+    #sql.run_sql("from data.log select count(count) where ctype != video groupby logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log select sum(count) where ctype != video groupby logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log.head select avg(count) where ctype != video groupby logtime into res.logtime.nov view print")
+    sql.run_sql("from data.log.head select top(count, 3) where ctype != video groupby logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log select 0 where ctype == video groupby logtime into res.logtime.v view file value count")
 
     #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby cate, logtime into res.cate view file value count")
     #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby ctype, logtime into res.ctype view file value count")
