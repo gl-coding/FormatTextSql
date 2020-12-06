@@ -19,7 +19,8 @@ class Sql:
         self.view_style = ""
         self.final_res  = []
         self.val_idx    = 0
-        self.group_func = ""
+        self.group_func = []
+        self.count_type = ""
         self.print_type = "print"
         self.clean_dir()
 
@@ -70,11 +71,16 @@ class Sql:
                 self.global_list.append(splits)
                 
     def select(self, func):
+        if ":" in func and len(func.split(":")) == 2:
+            func, count_type = func.split(":")
+            self.count_type = count_type
         funcname, args = func.split("(")
         args = args.strip(")")
         args = args.split(",")
+        #arg[0] -> count col name
         self.val_idx = args[0]
         self.val_idx = self.head_idx(self.val_idx)
+        #arg[1:] -> others
         self.group_func = [funcname] + args[1:]
                 
     def where(self, condition):
@@ -169,6 +175,8 @@ class Sql:
         self.format_data()
     
     def format_data(self):
+        if self.count_type == "int":
+            self.final_res = Tools.type_trans(self.final_res)
         if self.print_type == "print":
             for items in self.final_res:
                 print("\t".join(map(str, items)))
@@ -220,7 +228,8 @@ if __name__ == "__main__":
     #sql.run_sql("from data.log select count(count) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log select sum(count) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select avg(count) where ctype != video groupby logtime into res.logtime.nov view print")
-    sql.run_sql("from data.log.head select top(count, 3) where ctype != video groupby logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log.head select top(count, 3) where ctype != video groupby logtime into res.logtime.nov view print")
+    sql.run_sql("from data.log.head select top(count, 3):int where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log select 0 where ctype == video groupby logtime into res.logtime.v view file value count")
 
     #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby cate, logtime into res.cate view file value count")

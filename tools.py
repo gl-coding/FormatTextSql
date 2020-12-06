@@ -22,6 +22,20 @@ class Tools:
     OUTPUT_EXCEL = "output.xls"
     
     TRANSFORM = __import__("tools_transform")
+    
+    @staticmethod
+    def type_trans(res):
+        if len(res) == 0 or len(res[0]) == 0:
+            return
+        val, val_type = Tools.type_convert(res[0][-1])
+        if val_type != "float":
+            return res
+        res_new = []
+        for items in res:
+            if val_type == "float":
+                items[-1] = str(int(float(items[-1])))
+            res_new.append(items)
+        return res_new
 
     @staticmethod
     def type_convert(arg):
@@ -153,7 +167,7 @@ class Tools:
         if func == "none":
             for k, v in groupby_dic.items():
                 for item in v:
-                    res.append(k.split("\t") + [item])
+                    res.append(k.split("\t") + [str(item)])
         elif func == "count":
             res = [(k+"\t"+str(len(v))).split("\t") for k, v in groupby_dic.items()]
         elif func == "sum":
@@ -168,7 +182,7 @@ class Tools:
             for k, v in groupby_dic.items():
                 items = heapq.nlargest(n, v)
                 for item in items:
-                    res.append(k.split("\t") + [item])
+                    res.append(k.split("\t") + [str(item)])
             pass
         else:
             print("error:group function match none!!!")
