@@ -42,7 +42,7 @@ class Sql:
         return res
 
     def set_head(self, head_str=""):
-        self.head_list = head_str.strip().split("\t")
+        self.head_list = head_str.strip().split(Tools.GLOBAL_SEP)
         print("headlist:", self.head_list)
 
     def set_print_type(self, print_type="file"):
@@ -67,7 +67,7 @@ class Sql:
                 if count == 1:
                     self.set_head(line)
                     continue
-                splits = line.strip().split("\t")
+                splits = line.strip().split(Tools.GLOBAL_SEP)
                 self.global_list.append(splits)
                 
     def select(self, func):
@@ -100,7 +100,7 @@ class Sql:
             val = items[val_idx]
             for seg in seg_list:
                 key.append(items[seg])
-            key = "\t".join(key)
+            key = Tools.GLOBAL_SEP.join(key)
             #print key
             if key not in groupby_dic:
                 groupby_dic[key] = [float(val)]
@@ -115,21 +115,21 @@ class Sql:
     #by col in cur cols
     def sortby(self, seg_str):
         sortby_dic = []
-        seg_list = seg_str.split("\t")
+        seg_list = seg_str.split(Tools.GLOBAL_SEP)
         seg_left = set(head_list) - set(seg_list)
         for items in self.global_list:
             val = items[val_idx]
             key = []
             for seg in seg_list:
                 key.append(items[seg])
-            key = "\t".join(key)
+            key = Tools.GLOBAL_SEP.join(key)
             val = []
             for seg in seg_left:
                 val.append(items[seg])
-            val = "\t".join(val)
+            val = Tools.GLOBAL_SEP.join(val)
             sortby_dic.append(key, val)
         res = sortby_dic.sort()
-        res = [(k+"\t"+v).split("\t") for k, v in res]
+        res = [(k+Tools.GLOBAL_SEP+v).split(Tools.GLOBAL_SEP) for k, v in res]
         return res
     
     def simple_sort(self):
@@ -179,7 +179,7 @@ class Sql:
             self.final_res = Tools.type_trans(self.final_res)
         if self.print_type == "print":
             for items in self.final_res:
-                print("\t".join(map(str, items)))
+                print(Tools.GLOBAL_SEP.join(map(str, items)))
         elif self.print_type == "file":
             out_dir  = Tools.OUTPUT_DIR
             out_file = out_dir + self.out_file
@@ -187,7 +187,7 @@ class Sql:
                 os.remove(out_file)
             with open(out_file, "a") as f:
                 for items in self.final_res:
-                    line = "\t".join(items) + "\n"
+                    line = Tools.GLOBAL_SEP.join(items) + "\n"
                     #print(line)
                     f.write(line)
         else:
@@ -211,7 +211,7 @@ class Sql:
                         line_count += 1
                         #if line_count == -1:
                         #    continue
-                        res = line.split("\t")
+                        res = line.split(Tools.GLOBAL_SEP)
                         count = -1
                         for item in res:
                             count += 1

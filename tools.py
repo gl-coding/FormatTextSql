@@ -7,6 +7,8 @@ import shutil
 import heapq
 
 class Tools:
+    GLOBAL_SEP    = "\t"
+
     ERR_NO_INPUT  = -1
     ERR_NO_OUTPUT = -2
     ERR_NO_VIEW   = -3
@@ -167,13 +169,13 @@ class Tools:
         if func == "none":
             for k, v in groupby_dic.items():
                 for item in v:
-                    res.append(k.split("\t") + [str(item)])
+                    res.append(k.split(Tools.GLOBAL_SEP) + [str(item)])
         elif func == "count":
-            res = [(k+"\t"+str(len(v))).split("\t") for k, v in groupby_dic.items()]
+            res = [(k+Tools.GLOBAL_SEP+str(len(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
         elif func == "sum":
-            res = [(k+"\t"+str(sum(v))).split("\t") for k, v in groupby_dic.items()]
+            res = [(k+Tools.GLOBAL_SEP+str(sum(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
         elif func == "avg":
-            res = [(k+"\t"+str(sum(v)/len(v))).split("\t") for k, v in groupby_dic.items()]
+            res = [(k+Tools.GLOBAL_SEP+str(sum(v)/len(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
         elif func == "top":
             if len(func_list) != 2:
                 print("error:group function top args num != 2!!!")
@@ -182,7 +184,7 @@ class Tools:
             for k, v in groupby_dic.items():
                 items = heapq.nlargest(n, v)
                 for item in items:
-                    res.append(k.split("\t") + [str(item)])
+                    res.append(k.split(Tools.GLOBAL_SEP) + [str(item)])
             pass
         else:
             print("error:group function match none!!!")
