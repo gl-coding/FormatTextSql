@@ -178,7 +178,7 @@ class Tools:
         elif func == "mean":
             res = [(k+Tools.GLOBAL_SEP+str(np.mean(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
         elif func == "std":
-            res = [(k+Tools.GLOBAL_SEP+str(np.std(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
+            res = [(k+Tools.GLOBAL_SEP+str(np.std(v, ddof=1))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
         elif func == "top":
             if len(func_list) != 2:
                 print("error:group function top args num != 2!!!")
