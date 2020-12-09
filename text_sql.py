@@ -229,7 +229,8 @@ if __name__ == "__main__":
     #sql.run_sql("from data.log select sum(count) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select avg(count) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select top(count, 3) where ctype != video groupby logtime into res.logtime.nov view print")
-    sql.run_sql("from data.log.head select top(count, 3):int where ctype != video groupby logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log.head select top(count, 3):int where ctype != video groupby logtime into res.logtime.nov view print")
+    sql.run_sql("from data.log.head select mean(count) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log select 0 where ctype == video groupby logtime into res.logtime.v view file value count")
 
     #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby cate, logtime into res.cate view file value count")

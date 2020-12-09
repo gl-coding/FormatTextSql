@@ -5,6 +5,7 @@ import xlwt
 import json
 import shutil
 import heapq
+import numpy as np
 
 class Tools:
     GLOBAL_SEP    = "\t"
@@ -17,7 +18,7 @@ class Tools:
 
     KEYWORDS  = ["from", "into", "view", "select", "where", "groupby", "sortby", "value"]
     EXE_ORDER = ["where", "groupby", "sortby"]
-    FUNCTION  = ["none", "count", "sum", "avg", "top"]
+    FUNCTION  = ["none", "count", "sum", "mean", "std", "top"]
     EXCEPT    = ["select"]
 
     OUTPUT_DIR   = "output/"
@@ -174,8 +175,10 @@ class Tools:
             res = [(k+Tools.GLOBAL_SEP+str(len(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
         elif func == "sum":
             res = [(k+Tools.GLOBAL_SEP+str(sum(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
-        elif func == "avg":
-            res = [(k+Tools.GLOBAL_SEP+str(sum(v)/len(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
+        elif func == "mean":
+            res = [(k+Tools.GLOBAL_SEP+str(np.mean(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
+        elif func == "std":
+            res = [(k+Tools.GLOBAL_SEP+str(np.std(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
         elif func == "top":
             if len(func_list) != 2:
                 print("error:group function top args num != 2!!!")
