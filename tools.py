@@ -5,6 +5,7 @@ import xlwt
 import json
 import shutil
 import heapq
+import xlwt
 import numpy as np
 
 class Tools:
@@ -159,20 +160,6 @@ class Tools:
         return arg_dic
 
     @staticmethod
-    def matrixfy(groupby_dic, horizon=True):
-        res = []
-        for k, v in groupby_dic.items():
-            if isinstance(v, list):
-                if horizon:
-                    res.append(k.split(Tools.GLOBAL_SEP) + v)
-                else:
-                    for item in v:
-                        res.append((k + Tools.GLOBAL_SEP + str(item)).split(Tools.GLOBAL_SEP))
-            else:
-                res.append((k + Tools.GLOBAL_SEP + str(v)).split(Tools.GLOBAL_SEP))
-        return res
-
-    @staticmethod
     def group_compute(groupby_dic, func_list):
         if isinstance(func_list, list) and len(func_list) > 0 and  func_list[0] in Tools.FUNCTION:
             pass
@@ -219,6 +206,44 @@ class Tools:
         return res
     
     @staticmethod
+    def dict_matrixfy(groupby_dic, horizon=True):
+        res = []
+        for k, v in groupby_dic.items():
+            if isinstance(v, list):
+                if horizon:
+                    res.append(k.split(Tools.GLOBAL_SEP) + v)
+                else:
+                    for item in v:
+                        res.append((k + Tools.GLOBAL_SEP + str(item)).split(Tools.GLOBAL_SEP))
+            else:
+                res.append((k + Tools.GLOBAL_SEP + str(v)).split(Tools.GLOBAL_SEP))
+        return res
+    
+    @staticmethod
+    def join(dic_pre, dic_post):
+        keys_pre = set(dic_pre.keys())
+        keys_post = set(dic_post.keys())
+        cross = keys_pre & keys_post
+        diff_pre = keys_pre - cross
+        diff_post = keys_post - cross
+        res = []
+        pre_len, post_len = -1, -1
+        for key in cross:
+            item_pre  = key.split("\t") + dic_pre[key]
+            item_post = key.split("\t") + dic_post[key]
+            if pre_len == -1:
+                pre_len, post_len = len(item_pre), len(item_post)
+            item_list = item_pre + item_post
+            res.append(item_list)
+        for key in diff_pre:
+            item_list = item_pre[key] + ['none']*post_len
+            res.append(item_list)
+        for key in diff_post:
+            item_list = ['none']*pre_len + item_post[key]
+            res.append(item_list)
+        return res
+
+    @staticmethod
     def print(arg, print_flag=False):
         #print_flag = True
         if print_flag:
@@ -226,3 +251,30 @@ class Tools:
         else:
             pass
 
+    @staticmethod
+    def write_excel(in_dir, out_file, sep="\t"):
+        wb = xlwt.Workbook()
+        file_list = []
+        for root, dirs, files in os.walk(in_dir):
+            for f in files:
+                file_list.append(f)
+        if len(file_list) == 0:
+            print("no output files, exit")
+            return
+        file_list = sorted(file_list)
+
+        for f in file_list:
+            ws = wb.add_sheet(f)
+            full_path = in_dir + f
+            with open(full_path) as fin:
+                line_count = -1
+                for line in fin:
+                    line_count += 1
+                    res = line.split(sep)
+                    count = -1
+                    for item in res:
+                        count += 1
+                        ws.write(line_count, count, item)
+
+        wb.save(out_file)
+                

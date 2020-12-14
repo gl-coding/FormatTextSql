@@ -1,7 +1,6 @@
 #encoding=utf8
 import os
 import sys
-import xlwt
 import json
 import shutil
 
@@ -109,8 +108,6 @@ class Sql:
                 groupby_dic[key] = [float(val)]
             else:
                 groupby_dic[key].append(float(val))
-        #print groupby_dic
-        #res = [(k+"\t"+str(v)).split("\t") for k, v in groupby_dic.items()]
         res = Tools.group_compute(groupby_dic, self.group_func)
         #print res
         return res
@@ -183,7 +180,7 @@ class Sql:
             res_list.append(res)
         res_merge = Tools.group_merge(res_list)
         #print(res_merge)
-        self.final_res = Tools.matrixfy(res_merge)
+        self.final_res = Tools.dict_matrixfy(res_merge)
         self.simple_sort()
         self.format_data()
     
@@ -204,39 +201,13 @@ class Sql:
                     #print(line)
                     f.write(line)
         else:
-            in_dir   = Tools.OUTPUT_DIR
-            wb = xlwt.Workbook()
-            file_list = []
-            for root, dirs, files in os.walk(in_dir):
-                for f in files:
-                    file_list.append(f)
-            if len(file_list) == 0:
-                print("no output files, exit")
-                return
-            file_list = sorted(file_list)
-
-            for f in file_list:
-                ws = wb.add_sheet(f)
-                full_path = in_dir + f
-                with open(full_path) as fin:
-                    line_count = -1
-                    for line in fin:
-                        line_count += 1
-                        #if line_count == -1:
-                        #    continue
-                        res = line.split(Tools.GLOBAL_SEP)
-                        count = -1
-                        for item in res:
-                            count += 1
-                            item, val_type = Tools.type_convert(item)
-                            ws.write(line_count, count, item)
-
-            wb.save(Tools.OUTPUT_EXCEL)
+            Tools.write_excel(Tools.OUTPUT_DIR, Tools.OUTPUT_EXCEL)
                     
 if __name__ == "__main__":
     sql = Sql()
     #write one sql res to a file in out_dir
 
+    #test
     #sql.run_sql("from data.log.head select count(count) groupby logtime into res.logtime view print")
     #sql.run_sql("from data.log select count(count) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log select sum(count) where ctype != video groupby logtime into res.logtime.nov view print")
@@ -244,11 +215,14 @@ if __name__ == "__main__":
     #sql.run_sql("from data.log.head select top(count, 3) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select top(count, 3):int where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select mean(count) | sum(count) where ctype != video groupby logtime into res.logtime.nov view print")
-    sql.run_sql("from data.log.head select sum(count):int where ctype != video groupby cate, logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log.head select sum(count):int where ctype != video groupby cate, logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select sum(count) where ctype != video groupby cate, logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select distinct(count) where ctype != video groupby cate into res.logtime.nov view print")
-    #sql.run_sql("from data.log select 0 where ctype == video groupby logtime into res.logtime.v view file value count")
 
+    #run
+    #sql.run_sql("from data.log select 0 where ctype == video groupby logtime into res.logtime.v view file value count")
+    sql.run_sql("from data.log select sum(count):int groupby cate, logtime into res.cate.logtime view file")
+    #sql.run_sql("from data.log select sum(count):int where ctype != video groupby cate, logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby cate, logtime into res.cate view file value count")
     #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby ctype, logtime into res.ctype view file value count")
 
