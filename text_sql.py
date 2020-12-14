@@ -82,6 +82,9 @@ class Sql:
         self.val_idx = self.head_idx(self.val_idx)
         #arg[1:] -> others
         self.group_func = [funcname] + args[1:]
+        
+    def select_split(self, select_condition):
+        return [item.strip() for item in select_condition.split("|")]
                 
     def where(self, condition):
         if len(condition) > 1:
@@ -134,12 +137,26 @@ class Sql:
     
     def simple_sort(self):
         self.final_res.sort()
+        
+    def exec_engine(self, arg_dic):
+        res = []
+        exe_order = Tools.order_pick(arg_dic)
+        #Tools.print(exe_order)
+        for k, v in exe_order:
+            #print k
+            if k == "where":
+                res = self.where(v)
+            if k == "groupby":
+                val = self.head_idx(v)
+                res = self.groupby(val)
+            if k == "sortby":
+                res = self.sortby(v)
+
+        return res
 
     def run_sql(self, sql_str):
-        res = []
-        
         arg_dic = Tools.parse_sql(sql_str)
-        print(arg_dic)
+        #print(arg_dic)
         self.in_file = Tools.error_check(arg_dic.get("from", Tools.ERR_NO_INPUT))
         self.load_data()
         #print(self.global_list)
@@ -152,25 +169,21 @@ class Sql:
         self.set_print_type(self.view_style)
         arg_dic.pop("view")
 
-        self.select(Tools.error_check(arg_dic.get("select", Tools.ERR_NO_FUNC)))
+        select_splits = self.select_split(Tools.error_check(arg_dic.get("select", Tools.ERR_NO_FUNC)))
 
         #self.val_idx = Tools.error_check(arg_dic.get("value", Tools.ERR_NO_VALUE))
         #arg_dic.pop("value")
-        Tools.print(arg_dic)
-
-        exe_order = Tools.order_pick(arg_dic)
-        Tools.print(exe_order)
-        for k, v in exe_order:
-            #print k
-            if k == "where":
-                res = self.where(v)
-            if k == "groupby":
-                val = self.head_idx(v)
-                res = self.groupby(val)
-            if k == "sortby":
-                res = self.sortby(v)
-
-        self.final_res = res
+        res_list = []
+        for con in select_splits:
+            #print("con",con)
+            arg_dic.update({"select":con})
+            #print(arg_dic)
+            self.select(con)
+            res = self.exec_engine(arg_dic)
+            res_list.append(res)
+        res_merge = Tools.group_merge(res_list)
+        #print(res_merge)
+        self.final_res = Tools.matrixfy(res_merge)
         self.simple_sort()
         self.format_data()
     
@@ -227,10 +240,13 @@ if __name__ == "__main__":
     #sql.run_sql("from data.log.head select count(count) groupby logtime into res.logtime view print")
     #sql.run_sql("from data.log select count(count) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log select sum(count) where ctype != video groupby logtime into res.logtime.nov view print")
-    #sql.run_sql("from data.log.head select avg(count) where ctype != video groupby logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log.head select mean(count) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select top(count, 3) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select top(count, 3):int where ctype != video groupby logtime into res.logtime.nov view print")
-    sql.run_sql("from data.log.head select mean(count) where ctype != video groupby logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log.head select mean(count) | sum(count) where ctype != video groupby logtime into res.logtime.nov view print")
+    sql.run_sql("from data.log.head select sum(count):int where ctype != video groupby cate, logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log.head select sum(count) where ctype != video groupby cate, logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log.head select distinct(count) where ctype != video groupby cate into res.logtime.nov view print")
     #sql.run_sql("from data.log select 0 where ctype == video groupby logtime into res.logtime.v view file value count")
 
     #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby cate, logtime into res.cate view file value count")

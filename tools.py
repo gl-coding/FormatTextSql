@@ -18,7 +18,7 @@ class Tools:
 
     KEYWORDS  = ["from", "into", "view", "select", "where", "groupby", "sortby", "value"]
     EXE_ORDER = ["where", "groupby", "sortby"]
-    FUNCTION  = ["none", "count", "sum", "mean", "std", "top"]
+    FUNCTION  = ["none", "distinct", "count", "sum", "mean", "std", "top"]
     EXCEPT    = ["select"]
 
     OUTPUT_DIR   = "output/"
@@ -159,6 +159,20 @@ class Tools:
         return arg_dic
 
     @staticmethod
+    def matrixfy(groupby_dic, horizon=True):
+        res = []
+        for k, v in groupby_dic.items():
+            if isinstance(v, list):
+                if horizon:
+                    res.append(k.split(Tools.GLOBAL_SEP) + v)
+                else:
+                    for item in v:
+                        res.append((k + Tools.GLOBAL_SEP + str(item)).split(Tools.GLOBAL_SEP))
+            else:
+                res.append((k + Tools.GLOBAL_SEP + str(v)).split(Tools.GLOBAL_SEP))
+        return res
+
+    @staticmethod
     def group_compute(groupby_dic, func_list):
         if isinstance(func_list, list) and len(func_list) > 0 and  func_list[0] in Tools.FUNCTION:
             pass
@@ -166,19 +180,19 @@ class Tools:
             print("error:group function error!!!")
             exit()
         func = func_list[0]
-        res = []
+        res_dic = {}
         if func == "none":
-            for k, v in groupby_dic.items():
-                for item in v:
-                    res.append(k.split(Tools.GLOBAL_SEP) + [str(item)])
+            res_dic = groupby_dic
+        elif func == "distinct":
+            res_dic = {k:list(set(v)) for k, v in groupby_dic.items()}
         elif func == "count":
-            res = [(k+Tools.GLOBAL_SEP+str(len(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
+            res_dic = {k:len(v) for k, v in groupby_dic.items()}
         elif func == "sum":
-            res = [(k+Tools.GLOBAL_SEP+str(sum(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
+            res_dic = {k:sum(v) for k, v in groupby_dic.items()}
         elif func == "mean":
-            res = [(k+Tools.GLOBAL_SEP+str(np.mean(v))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
+            res_dic = {k:np.mean(v) for k, v in groupby_dic.items()}
         elif func == "std":
-            res = [(k+Tools.GLOBAL_SEP+str(np.std(v, ddof=1))).split(Tools.GLOBAL_SEP) for k, v in groupby_dic.items()]
+            res_dic = {k:np.std(v, ddof=1) for k, v in groupby_dic.items()}
         elif func == "top":
             if len(func_list) != 2:
                 print("error:group function top args num != 2!!!")
@@ -186,11 +200,22 @@ class Tools:
             n = int(func_list[1])
             for k, v in groupby_dic.items():
                 items = heapq.nlargest(n, v)
-                for item in items:
-                    res.append(k.split(Tools.GLOBAL_SEP) + [str(item)])
+                res_dic.update({k:items})
             pass
         else:
             print("error:group function match none!!!")
+        return res_dic
+
+    @staticmethod
+    def group_merge(groupby_list):
+        if len(groupby_list) == 1:
+            return groupby_list[0]
+        keys = groupby_list[0].keys()
+        res  = {}
+        for key in keys:
+            res[key] = []
+            for kv in groupby_list:
+                res[key].append(kv.get(key, ""))
         return res
     
     @staticmethod
