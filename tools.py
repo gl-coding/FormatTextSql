@@ -31,7 +31,7 @@ class Tools:
     def type_trans(res):
         if len(res) == 0 or len(res[0]) == 0:
             return
-        val, val_type = Tools.type_convert(res[0][-1])
+        val, val_type = Tools.type_check(res[0][-1])
         if val_type != "float":
             return res
         res_new = []
@@ -42,8 +42,8 @@ class Tools:
         return res_new
 
     @staticmethod
-    def type_convert(arg):
-        val_type = ""
+    def type_check(arg):
+        val_type = "str"
         res = arg
         try:
             res = int(arg)
@@ -168,29 +168,30 @@ class Tools:
             exit()
         func = func_list[0]
         res_dic = {}
-        if func == "none":
-            res_dic = groupby_dic
-        elif func == "distinct":
-            res_dic = {k:list(set(v)) for k, v in groupby_dic.items()}
-        elif func == "count":
-            res_dic = {k:len(v) for k, v in groupby_dic.items()}
-        elif func == "sum":
-            res_dic = {k:sum(v) for k, v in groupby_dic.items()}
-        elif func == "mean":
-            res_dic = {k:np.mean(v) for k, v in groupby_dic.items()}
-        elif func == "std":
-            res_dic = {k:np.std(v, ddof=1) for k, v in groupby_dic.items()}
-        elif func == "top":
-            if len(func_list) != 2:
-                print("error:group function top args num != 2!!!")
-                exit()
-            n = int(func_list[1])
-            for k, v in groupby_dic.items():
-                items = heapq.nlargest(n, v)
-                res_dic.update({k:items})
-            pass
-        else:
-            print("error:group function match none!!!")
+        if func in ["none", "distinct"]:
+            if func == "none":
+                res_dic = groupby_dic
+            elif func == "distinct":
+                res_dic = {k:list(set(v))[:3] for k, v in groupby_dic.items()}
+        if func in ["count", "sum", "mean", "std"]:
+            if func == "count":
+                res_dic = {k:len(v) for k, v in groupby_dic.items()}
+            elif func == "sum":
+                res_dic = {k:sum(list(map(float, v))) for k, v in groupby_dic.items()}
+            elif func == "mean":
+                res_dic = {k:np.mean(list(map(float, v))) for k, v in groupby_dic.items()}
+            elif func == "std":
+                res_dic = {k:np.std(list(map(float, v)), ddof=1) for k, v in groupby_dic.items()}
+        if func in ["top"]:
+            if func == "top":
+                if len(func_list) != 3:
+                    print("error:group function top args num != 2!!!")
+                    exit()
+                n = int(func_list[2])
+                for k, v in groupby_dic.items():
+                    fv = list(map(float, v))
+                    items = heapq.nlargest(n, fv)
+                    res_dic.update({k:items})
         return res_dic
 
     @staticmethod
@@ -250,6 +251,24 @@ class Tools:
             print(arg)
         else:
             pass
+    
+    @staticmethod
+    def clean_dir(dir_path):
+        #clean input dir
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
+        os.mkdir(dir_path)
+
+    @staticmethod
+    def clean_file(file_path):
+        #clean output excel
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    @staticmethod
+    def clean_files():
+        Tools.clean_dir(Tools.OUTPUT_DIR)
+        Tools.clean_file(Tools.OUTPUT_EXCEL)
 
     @staticmethod
     def write_excel(in_dir, out_file, sep="\t"):
@@ -275,6 +294,27 @@ class Tools:
                     for item in res:
                         count += 1
                         ws.write(line_count, count, item)
-
         wb.save(out_file)
-                
+                        
+    @staticmethod
+    def write_file(items_list, out_file, sep="\t"):
+        if os.path.exists(out_file):
+            os.remove(out_file)
+        with open(out_file, "a") as f:
+            #write data to file
+            for items in items_list:
+                line = Tools.GLOBAL_SEP.join(items) + "\n"
+                f.write(line)
+
+    @staticmethod
+    def format_data(items_list=[], outfile="", print_type="print"):
+        if print_type == "print":
+            for items in items_list:
+                print(Tools.GLOBAL_SEP.join(map(str, items)))
+        elif print_type == "file":
+            out_file = Tools.OUTPUT_DIR + outfile
+            Tools.write_file(items_list, out_file)
+        else:
+            Tools.write_excel(Tools.OUTPUT_DIR, Tools.OUTPUT_EXCEL)
+            
+

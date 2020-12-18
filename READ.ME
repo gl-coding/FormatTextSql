@@ -1,0 +1,12 @@
+#download image
+docker search mysql
+docker pull mysql:latest
+docker images
+
+#run docker container
+docker run -itd --name mysql_format -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 mysql
+
+#login docker
+docker exec -it mysql_format /bin/bash
+#mysql client
+mysql -u root -p

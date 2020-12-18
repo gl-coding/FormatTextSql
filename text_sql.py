@@ -21,9 +21,9 @@ class Sql:
         self.group_func = []
         self.count_type = ""
         self.print_type = "print"
-        self.clean_dir()
+        Tools.clean_files()
 
-    def head_idx(self, col):
+    def head__to_idx(self, col):
         if isinstance(col, str):
             res = Tools.list_find(self.head_list, col)
         elif isinstance(col, list):
@@ -47,16 +47,6 @@ class Sql:
     def set_print_type(self, print_type="file"):
         self.print_type = print_type
     
-    def clean_dir(self):
-        #clean input dir
-        if os.path.exists(Tools.OUTPUT_DIR):
-            shutil.rmtree(Tools.OUTPUT_DIR)
-        os.mkdir(Tools.OUTPUT_DIR)
-
-        #clean output excel
-        if os.path.exists(Tools.OUTPUT_EXCEL):
-            os.remove(Tools.OUTPUT_EXCEL)
-
     def load_data(self):
         self.global_list = []
         with open(self.in_file) as f:
@@ -69,7 +59,7 @@ class Sql:
                 splits = line.strip().split(Tools.GLOBAL_SEP)
                 self.global_list.append(splits)
                 
-    def select(self, func):
+    def parse_select_args(self, func):
         if ":" in func and len(func.split(":")) == 2:
             func, count_type = func.split(":")
             self.count_type = count_type
@@ -77,10 +67,10 @@ class Sql:
         args = args.strip(")")
         args = args.split(",")
         #arg[0] -> count col name
-        self.val_idx = args[0]
-        self.val_idx = self.head_idx(self.val_idx)
+        self.val_idx = args[:-1] ???????????????
+        self.val_idx = self.head_to_idx(self.val_idx)
         #arg[1:] -> others
-        self.group_func = [funcname] + args[1:]
+        self.group_func = [funcname] + args
         
     def select_split(self, select_condition):
         return [item.strip() for item in select_condition.split("|")]
@@ -105,9 +95,9 @@ class Sql:
             key = Tools.GLOBAL_SEP.join(key)
             #print key
             if key not in groupby_dic:
-                groupby_dic[key] = [float(val)]
+                groupby_dic[key] = [val]
             else:
-                groupby_dic[key].append(float(val))
+                groupby_dic[key].append(val)
         res = Tools.group_compute(groupby_dic, self.group_func)
         #print res
         return res
@@ -144,7 +134,7 @@ class Sql:
             if k == "where":
                 res = self.where(v)
             if k == "groupby":
-                val = self.head_idx(v)
+                val = self.head_to_idx(v)
                 res = self.groupby(val)
             if k == "sortby":
                 res = self.sortby(v)
@@ -174,15 +164,15 @@ class Sql:
         for con in select_splits:
             #print("con",con)
             arg_dic.update({"select":con})
-            #print(arg_dic)
-            self.select(con)
+            print(arg_dic)
+            self.parse_select_args(con)
             res = self.exec_engine(arg_dic)
             res_list.append(res)
         res_merge = Tools.group_merge(res_list)
         #print(res_merge)
         self.final_res = Tools.dict_matrixfy(res_merge)
         self.simple_sort()
-        self.format_data()
+        Tools.format_data(self.final_res, sefl.outfile, print_type="file")
     
     def format_data(self):
         if self.count_type == "int":
@@ -196,9 +186,11 @@ class Sql:
             if os.path.exists(out_file):
                 os.remove(out_file)
             with open(out_file, "a") as f:
+                #write head to file
+                f.write(Tools.GLOBAL_SEP.join(["col"+str(i) for i in range(len(self.final_res[0]))]) + "\n")
+                #write data to file
                 for items in self.final_res:
                     line = Tools.GLOBAL_SEP.join(items) + "\n"
-                    #print(line)
                     f.write(line)
         else:
             Tools.write_excel(Tools.OUTPUT_DIR, Tools.OUTPUT_EXCEL)
@@ -212,6 +204,8 @@ if __name__ == "__main__":
     #sql.run_sql("from data.log select count(count) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log select sum(count) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select mean(count) where ctype != video groupby logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log.head select sum(count) where ctype != video groupby logtime into res.logtime.nov view print")
+    #sql.run_sql("from data.log.head select std(count) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select top(count, 3) where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select top(count, 3):int where ctype != video groupby logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log.head select mean(count) | sum(count) where ctype != video groupby logtime into res.logtime.nov view print")
@@ -222,6 +216,7 @@ if __name__ == "__main__":
     #run
     #sql.run_sql("from data.log select 0 where ctype == video groupby logtime into res.logtime.v view file value count")
     sql.run_sql("from data.log select sum(count):int groupby cate, logtime into res.cate.logtime view file")
+    sql.run_sql("from output/res.cate.logtime select high(col1, col2) groupby col0 into res.cate.logtime.res view print")
     #sql.run_sql("from data.log select sum(count):int where ctype != video groupby cate, logtime into res.logtime.nov view print")
     #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby cate, logtime into res.cate view file value count")
     #sql.run_sql("from data.log select 0 where logtime=:filt_some groupby ctype, logtime into res.ctype view file value count")
@@ -233,7 +228,6 @@ if __name__ == "__main__":
     #sql.run_sql("from data.log select 0 where ctype != video and logtime=>merge_val groupby ctype, logtime into res.ctype.nov.int view file value count")
     
     #write files in output to excel 
-    sql.set_print_type("excel")
-    sql.format_data()
+    Tools.format_data(print_type="excel")
     
 
